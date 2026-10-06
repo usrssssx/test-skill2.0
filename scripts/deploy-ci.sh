@@ -4,6 +4,8 @@ set -euo pipefail
 environment="${1:-}"
 revision="${2:-}"
 archive="${3:-}"
+PHP_BINARY="${PHP_BINARY:-/usr/bin/php8.5}"
+[[ "$PHP_BINARY" =~ ^/[A-Za-z0-9._/-]+$ ]] || { echo "ERROR: invalid PHP binary" >&2; exit 2; }
 
 for variable in HOST PORT USER PATH_ON_SERVER APP_URL; do
   if [[ -z "${!variable:-}" ]]; then
@@ -32,7 +34,7 @@ scp "${scp_options[@]}" "$archive" "$USER@$HOST:$remote_archive"
 scp "${scp_options[@]}" scripts/deploy-release.sh "$USER@$HOST:$remote_script"
 
 ssh "${ssh_options[@]}" "$USER@$HOST" \
-  "bash '$remote_script' '$PATH_ON_SERVER' '$revision' '$remote_archive' '$APP_URL'"
+  "bash '$remote_script' '$PATH_ON_SERVER' '$revision' '$remote_archive' '$APP_URL' '$PHP_BINARY'"
 
 current_release="$(ssh "${ssh_options[@]}" "$USER@$HOST" "readlink -f '$PATH_ON_SERVER/current'")"
 [[ "${current_release##*/}" == "$revision" ]] || {

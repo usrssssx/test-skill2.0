@@ -2,11 +2,26 @@
 
 namespace Tests\Feature;
 
+use App\Services\Bitrix24\EntityRestClient;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 final class Bitrix24BrowserGateTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config()->set('bitrix24.registry_path', sys_get_temp_dir().'/entity-gate-test-'.bin2hex(random_bytes(8)));
+        $this->app->bind(EntityRestClient::class, static fn ($app, $parameters) => new EntityRestClient($parameters['portal'], $parameters['accessToken'], '8.8.8.8'));
+    }
+
+    protected function tearDown(): void
+    {
+        File::deleteDirectory(config('bitrix24.registry_path'));
+        parent::tearDown();
+    }
+
     public function test_direct_browser_access_is_denied(): void
     {
         $this->assertFileExists(public_path('brand/business-base-logo.png'));
@@ -40,6 +55,7 @@ final class Bitrix24BrowserGateTest extends TestCase
     public function test_verified_installation_context_renders_install_finish_page(): void
     {
         Http::fake([
+            'https://example.bitrix24.ru/rest/entity.add.json' => Http::response(['result' => true]),
             'https://example.bitrix24.ru/rest/app.info.json' => Http::response([
                 'result' => [
                     'ID' => 17,
@@ -53,6 +69,8 @@ final class Bitrix24BrowserGateTest extends TestCase
         $this->post('/bitrix24/install', [
             'DOMAIN' => 'example.bitrix24.ru',
             'AUTH_ID' => 'valid-access-token',
+            'REFRESH_ID' => 'valid-refresh-token',
+            'AUTH_EXPIRES' => 3600,
             'member_id' => 'portal-member-id',
         ])->assertOk()
             ->assertSee('window.BX24.installFinish()', false)

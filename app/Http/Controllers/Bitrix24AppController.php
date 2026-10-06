@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\Bitrix24\EntityRestClient;
+use App\Services\Bitrix24\EntityStorage;
+use App\Services\Bitrix24\InstallationRegistry;
 use App\Services\Bitrix24\LaunchVerifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -71,16 +74,18 @@ final class Bitrix24AppController extends Controller
         return redirect()->route('bitrix24.app');
     }
 
-    public function install(Request $request, LaunchVerifier $verifier): Response
+    public function install(Request $request, LaunchVerifier $verifier, InstallationRegistry $registry): Response
     {
         if (! $request->isMethod('post')) {
             return $this->denied();
         }
 
-        $payload = $request->only(['DOMAIN', 'AUTH_ID', 'member_id']);
+        $payload = $request->only(['DOMAIN', 'AUTH_ID', 'REFRESH_ID', 'AUTH_EXPIRES', 'member_id']);
         $validation = Validator::make($payload, [
             'DOMAIN' => ['required', 'string', 'max:253'],
             'AUTH_ID' => ['required', 'string', 'min:10', 'max:2048'],
+            'REFRESH_ID' => ['required', 'string', 'min:10', 'max:2048'],
+            'AUTH_EXPIRES' => ['required', 'integer', 'min:1', 'max:86400'],
             'member_id' => ['required', 'string', 'max:128'],
         ]);
 
@@ -90,6 +95,16 @@ final class Bitrix24AppController extends Controller
 
         try {
             $verified = $verifier->verify($payload['DOMAIN'], $payload['AUTH_ID'], false);
+            $client = app()->makeWith(EntityRestClient::class, ['portal' => $verified['portal'], 'accessToken' => $payload['AUTH_ID']]);
+            $storage = new EntityStorage($client, config('bitrix24.entity'));
+            $storage->ensureExists('Skill test storage');
+            $registry->save($verified['portal'], [
+                'member_id' => $payload['member_id'],
+                'app_code' => $verified['app_code'],
+                'access_token' => $payload['AUTH_ID'],
+                'refresh_token' => $payload['REFRESH_ID'],
+                'expires_at' => time() + (int) $payload['AUTH_EXPIRES'],
+            ]);
         } catch (Throwable $exception) {
             Log::warning('Bitrix24 installation verification failed.', ['reason' => $exception::class]);
 

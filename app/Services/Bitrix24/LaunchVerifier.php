@@ -11,6 +11,9 @@ final class LaunchVerifier
     public function verify(string $portal, string $accessToken, bool $requireInstalled = true): array
     {
         $host = $this->normalizeHost($portal);
+        if (config('bitrix24.portal') && $host !== config('bitrix24.portal')) {
+            throw new RuntimeException('This portal is not configured for the application.');
+        }
         $pinnedAddress = $this->trustedAddress($host);
         $options = ['allow_redirects' => false];
 
@@ -37,6 +40,7 @@ final class LaunchVerifier
             || ! is_numeric($result['ID'] ?? null)
             || ! is_string($result['CODE'] ?? null)
             || ($result['CODE'] ?? '') === ''
+            || (config('bitrix24.client_id') && $result['CODE'] !== config('bitrix24.client_id'))
             || ($requireInstalled && ! $installed)) {
             throw new RuntimeException('Bitrix24 rejected the application context.');
         }

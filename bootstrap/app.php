@@ -18,5 +18,5 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->dontFlash(['AUTH_ID', 'REFRESH_ID', 'APPLICATION_TOKEN', 'auth']);
     })->create();

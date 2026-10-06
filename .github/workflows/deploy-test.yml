@@ -26,13 +26,15 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.5'
-          extensions: bcmath, intl, mbstring, pcntl, pdo_mysql, xml, zip
+          extensions: bcmath, intl, mbstring, pcntl, redis, xml, zip
           coverage: none
       - uses: actions/setup-node@v7
         with:
           node-version: '24'
           cache: npm
       - name: Build release contents
+        env:
+          VITE_BASE_PATH: /entity-test/build/
         run: |
           cp .env.example .env
           composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
@@ -79,6 +81,7 @@ jobs:
           USER: ${{ vars.DEPLOY_USER }}
           PATH_ON_SERVER: ${{ vars.DEPLOY_PATH }}
           APP_URL: ${{ vars.APP_URL }}
+          PHP_BINARY: /usr/bin/php8.5
           REVISION: ${{ github.sha }}
         run: ./scripts/deploy-ci.sh test "$REVISION" ".deploy/release-$REVISION.tar.gz"
       - name: External health check

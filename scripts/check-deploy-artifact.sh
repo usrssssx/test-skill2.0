@@ -11,7 +11,7 @@ failed=0
 while IFS= read -r path; do
   relative="${path#"$root"/}"
   case "/$relative" in
-    */.git|*/.git/*|*/.env|*/.env.*|*/id_rsa|*/id_ed25519|*.pem|*.key|*.p12|*.pfx|*.sql|*.sql.gz|*.dump|*/setup-required-inputs.md|*/environment-setup-report.md|*_prompt.md|*/docs/internal/*)
+    */.git|*/.git/*|*/.env|*/.env.*|*/id_rsa|*/id_ed25519|*.pem|*.key|*.p12|*.pfx|*.sql|*.sql.gz|*.dump|*/project-environment.json|*/cloudpanel-entity-subpath.md|*/setup-required-inputs.md|*/environment-setup-report.md|*_prompt.md|*/docs/internal/*)
       case "$relative" in
         .env.example|*/.env.example) continue ;;
       esac
