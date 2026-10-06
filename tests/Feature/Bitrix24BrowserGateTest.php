@@ -97,6 +97,30 @@ final class Bitrix24BrowserGateTest extends TestCase
         $this->assertFalse(session()->has('bitrix24.context'));
     }
 
+    public function test_storage_failure_does_not_finish_installation_or_save_credentials(): void
+    {
+        config()->set('bitrix24.allowed_portal_hosts', ['example.bitrix24.ru']);
+        Http::fake([
+            '*/rest/app.info.json' => Http::response(['result' => ['ID' => 17, 'CODE' => 'vendor.application', 'INSTALLED' => false]]),
+            '*/rest/entity.add.json' => Http::response(['error' => 'ACCESS_DENIED'], 403),
+        ]);
+        $this->post('/bitrix24/install', [
+            'DOMAIN' => 'example.bitrix24.ru', 'AUTH_ID' => 'valid-access-token',
+            'REFRESH_ID' => 'valid-refresh-token', 'AUTH_EXPIRES' => 3600, 'member_id' => 'portal-member-id',
+        ])->assertForbidden()->assertDontSee('installFinish')->assertDontSee('valid-refresh-token');
+        $this->assertFileDoesNotExist(config('bitrix24.registry_path').'/'.hash('sha256', 'example.bitrix24.ru'));
+    }
+
+    public function test_other_application_token_is_rejected(): void
+    {
+        config()->set(['bitrix24.allowed_portal_hosts' => ['example.bitrix24.ru'], 'bitrix24.client_id' => 'expected.application']);
+        Http::fake(['*/rest/app.info.json' => Http::response(['result' => ['ID' => 17, 'CODE' => 'other.application', 'INSTALLED' => true]])]);
+        $this->post('/bitrix24/launch', [
+            'DOMAIN' => 'example.bitrix24.ru', 'AUTH_ID' => 'valid-access-token', 'member_id' => 'portal-member-id',
+        ])->assertForbidden();
+        $this->assertFalse(session()->has('bitrix24.context'));
+    }
+
     public function test_verified_launch_opens_the_empty_application_shell(): void
     {
         Http::fake([
