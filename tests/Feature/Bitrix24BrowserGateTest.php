@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Services\Bitrix24\EntityRestClient;
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -41,6 +43,21 @@ final class Bitrix24BrowserGateTest extends TestCase
             'Referer' => 'https://example.bitrix24.ru/',
             'Sec-Fetch-Dest' => 'iframe',
         ])->get('/')->assertSeeText('Приложение доступно только внутри Битрикс24');
+    }
+
+    public function test_subpath_root_returns_the_gate(): void
+    {
+        $request = Request::create('https://example.com/entity-test/', 'GET', [], [], [], [
+            'SCRIPT_NAME' => '/entity-test/index.php',
+            'PHP_SELF' => '/entity-test/index.php',
+            'SCRIPT_FILENAME' => public_path('index.php'),
+        ]);
+        $this->assertSame('/entity-test', $request->getBaseUrl());
+        $kernel = $this->app->make(Kernel::class);
+        $response = $kernel->handle($request);
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertStringContainsString('Приложение доступно только внутри Битрикс24', $response->getContent());
+        $kernel->terminate($request, $response);
     }
 
     public function test_direct_bitrix24_endpoints_are_denied(): void

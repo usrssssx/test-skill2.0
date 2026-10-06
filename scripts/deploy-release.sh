@@ -78,7 +78,7 @@ ln -s "$deploy_path/shared/storage" "$release/storage"
 
 cd "$release"
 "$php_binary" artisan config:cache
-"$php_binary" artisan route:cache
+"$php_binary" artisan route:clear
 "$php_binary" artisan view:cache
 
 ln -s "$release" "$deploy_path/current.next"
